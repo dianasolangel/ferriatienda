@@ -30,7 +30,7 @@ langchain = "^0.3.25"
 langchain-huggingface = "^0.2.0"
 huggingface-hub = "^0.32.4"
 faiss-cpu = "^1.11.0"
-elasticsearch = "^9.0.2"
+elasticsearch = "^8.12.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^8.3.4"
