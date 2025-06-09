@@ -7,6 +7,7 @@ from IPython.display import display, HTML
 
 load_dotenv()
 
+
 ALEGRA_API_TOKEN = os.getenv("ALEGRA_API_TOKEN")
 ALEGRA_EMAIL = os.getenv("ALEGRA_EMAIL")
 
@@ -45,17 +46,16 @@ def fetch_all_data():
 
 def search_item_by_name(name,limit=2):
     """
-    Searches for a product by name in Alegra API.
+    Searches for a product by name in the Alegra API.
     
     :param name: The name of the product to search for.
-    :param start: Pagination start index.
     :param limit: Number of results to fetch.
     :return: JSON response with matching products.
     """
     headers = get_auth_headers()
     params = {
         "limit": limit,
-        "name": name  # Search by name
+        "name": name  # Search by name 
     }
     response = requests.get(URL, headers=headers, params=params)
 
@@ -66,7 +66,38 @@ def search_item_by_name(name,limit=2):
                 data_formated= format_product_results(data)  # Format and display results
                 return data_formated
             else:
-                print("No products found matching the name.")
+                print("No products found matching the reference.")
+                return None
+        except ValueError:
+            print("Invalid JSON response.")
+            return None
+    else:
+        print(f"Error {response.status_code}: {response.text}")
+        return None
+    
+def search_item_by_reference(reference,limit=2):
+    """
+    Searches for a product by reference in the Alegra API.
+    
+    :param reference: The reference of the product to search for.
+    :param limit: Number of results to fetch.
+    :return: JSON response with matching products.
+    """
+    headers = get_auth_headers()
+    params = {
+        "limit": limit,
+        "reference": reference  # Search by reference
+    }
+    response = requests.get(URL, headers=headers, params=params)
+
+    if response.status_code == 200:
+        try:
+            data = response.json()
+            if data:
+                data_formated= format_product_results(data)  # Format and display results
+                return data_formated
+            else:
+                print("No products found matching the reference.")
                 return None
         except ValueError:
             print("Invalid JSON response.")
@@ -82,6 +113,7 @@ def format_product_results(products):
     for product in products:
         product_info = {
             "ID": product["id"],
+            "Referencia": product["reference"],
             "Nombre": product["name"],
             "Categoria": product["itemCategory"]["name"] if "itemCategory" in product else "N/A",
             "Precio": f"{product['price'][0]['price']} {product['price'][0]['currency']['symbol']}" if "price" in product and product["price"] else "N/A",
@@ -102,6 +134,51 @@ def format_product_results(products):
 
     return df
 
+#change rpour les modifier que par l'id pour le reste car quand on récupère despuis alegra on a l'id du produit
+def modify_item_by_reference(reference, column, value):
+    """
+    Modifies a column value of a product by reference in Alegra API.
+
+    :param reference: The reference of the product to search for.
+    :param column: The column to modify (e.g., "reference", "description").
+    :param value: The new value to set.
+    :return: JSON response with the updated product.
+    """
+    headers = get_auth_headers()
+
+    #Search for the product by name
+    search_params = {"limit": 1, "reference": reference} 
+    response = requests.get(URL, headers=headers, params=search_params)
+
+    if response.status_code == 200:
+        try:
+            data = response.json()
+            if not data:
+                print(f"⚠️ No product found with reference '{reference}'.")
+                return None
+
+            product_id = data[0]["id"]  #Extract the ID
+            print(f"✅ Found product '{reference}' with ID {product_id}")
+
+            #Modify the product
+            update_url = f"{URL}/{product_id}"
+            payload = {column: value}  # Column and new value to update
+            update_response = requests.put(update_url, json=payload, headers=headers)
+
+            if update_response.status_code == 200:
+                print(f"✅ Successfully updated {column} to '{value}' for product ID {product_id}")
+                return update_response.json()  # Return updated product info
+            else:
+                print(f"Error updating product: {update_response.text}")
+                return None
+
+        except ValueError:
+            print("Invalid JSON response while searching.")
+            return None
+    else:
+        print(f"Error searching for product: {response.text}")
+        return None
+    
 # if __name__ == "__main__":
 #     product_name = input("Enter the product name: ")
 #     print(f"\n🔍 Searching for products matching '{product_name}'...\n")
