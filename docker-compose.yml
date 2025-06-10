@@ -1,25 +1,37 @@
 services:
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
-    container_name: elasticsearch
-    environment:
-      - discovery.type=single-node
-      - xpack.security.enabled=false
+  chroma:
+    image: chromadb/chroma
     ports:
-      - "9200:9200"
+      - "8000:8000"
     volumes:
-      - esdata:/usr/share/elasticsearch/data
+      - chroma_data:/chroma/.chroma
+    restart: always
+
+  # elasticsearch:
+  #   image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+  #   container_name: elasticsearch
+  #   environment:
+  #     - discovery.type=single-node
+  #     - xpack.security.enabled=false
+  #   ports:
+  #     - "9200:9200"
+  #   volumes:
+  #     - esdata:/usr/share/elasticsearch/data
+  #   healthcheck:
+  #     test: curl -s http://localhost:9200 || exit 1
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 10
 
   ferriatienda_app:
     build: .
     container_name: ferriatienda_app
-    depends_on:
-      - elasticsearch
     ports:
       - "8501:8501"
     volumes:
       - .:/app
+      - ~/.cache/huggingface:/root/.cache/huggingface # Cache for Hugging Face models
     command: poetry run streamlit run ferriatienda/streamlit_app.py
 
 volumes:
-  esdata:
+  chroma_data:

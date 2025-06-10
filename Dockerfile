@@ -26,6 +26,11 @@ COPY pyproject.toml poetry.lock ./
 # Instala las dependencias del proyecto
 RUN poetry install --no-root
 
+RUN pip install --upgrade pip
+RUN pip install sentence-transformers
+RUN pip install --upgrade huggingface-hub transformers
+RUN pip install --upgrade langchain-huggingface
+
 # Copia el resto del proyecto
 COPY . .
 
