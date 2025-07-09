@@ -4,6 +4,8 @@ import base64
 import os
 import pandas as pd
 from IPython.display import display, HTML  
+from pathlib import Path
+from langchain_community.document_loaders import PyPDFLoader
 
 load_dotenv()
 
@@ -31,12 +33,32 @@ def get_auth_headers():
 """Function to get all itemp on the inventory"""
 def fetch_all_data():
     headers = get_auth_headers()
-    response = requests.get(URL, headers=headers)
-    response.json()
-    
+    params = {
+        "fields": "id,reference,name,itemCategory.name",
+    }
+    response = requests.get(URL, headers=headers, params=params)
+
     if response.status_code == 200:
         try:
-            return response.json()  # Return parsed JSON data
+            data = response.json()
+            if data:
+                # data_formated = format_product_results(data)  # Format and display results
+                formatted_data = []
+                for product in data:
+                    product_info = {
+                        "ID": product["id"],
+                        "Referencia": product["reference"],
+                        "Nombre": product["name"],
+                        "Categoria": product["itemCategory"]["name"] if "itemCategory" in product else "N/A",
+                    }
+                    formatted_data.append(product_info)
+
+                data_formated = pd.DataFrame(formatted_data)
+                return data_formated  # Return formatted DataFrame
+            else:
+                print("No products found matching the reference.")
+                return None
+            # return response.json()  # Return parsed JSON data
         except ValueError:
             print("Invalid JSON response")
             return None
@@ -86,8 +108,9 @@ def search_item_by_reference(reference,limit=2):
     headers = get_auth_headers()
     params = {
         "limit": limit,
-        "reference": reference  # Search by reference
+        "reference": reference  # Search by reference, 
     }
+    
     response = requests.get(URL, headers=headers, params=params)
 
     if response.status_code == 200:
@@ -179,7 +202,63 @@ def modify_item_by_reference(reference, column, value):
         print(f"Error searching for product: {response.text}")
         return None
     
+"""Function to download a file from a URL and save it to a local path"""
+def download_file(url, path):
+    response = requests.get(url)
+    with open(path, "wb") as f:
+        f.write(response.content)
+        
+def extract_text_from_file(path):
+    """
+    Extracts text from a PDF file using LangChain PyPDFLoader.
+    """
+    try:
+        loader = PyPDFLoader(path)
+        docs = loader.load_and_split()
+        return "\n".join([doc.page_content for doc in docs])
+    except Exception as e:
+        return f"❌ Failed to extract text: {e}"
+        
+def extract_text_from_attachments(item_id):
+    """
+    Récupère les pièces jointes d'un produit à partir de l'API Alegra,
+    les télécharge et extrait le texte de chaque PDF.
+    """
+    url = f"https://api.alegra.com/api/v1/items/{item_id}?fields=attachments"
+    headers = get_auth_headers()
+    response = requests.get(url, headers=headers)
+
+    if response.status_code == 200:
+        data = response.json()
+        attachments = data.get("attachments", [])
+        if not attachments:
+            print("❌ Aucun fichier joint trouvé.")
+            return
+
+        os.makedirs("attachments", exist_ok=True)
+
+        for attachment in attachments:
+            file_url = attachment["url"]
+            file_name = attachment["name"].replace(" ", "_")
+            local_path = f"./attachments/{file_name}"
+
+            # Télécharger le fichier
+            download_file(file_url, local_path)
+
+            # Extraire le texte
+            if local_path.lower().endswith(".pdf"):
+                text = extract_text_from_file(local_path)
+                return text
+            else:
+                print(f"⚠️ Skipping non-PDF attachment: {file_name}")
+    else:
+        print(f"❌ Failed to fetch attachments: {response.status_code}")
+        
+    
 # if __name__ == "__main__":
 #     product_name = input("Enter the product name: ")
 #     print(f"\n🔍 Searching for products matching '{product_name}'...\n")
 #     search_item_by_name(product_name)
+
+
+
