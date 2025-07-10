@@ -1,25 +1,25 @@
 [tool.poetry]
 name = "ferriatienda"
 version = "0.1.0"
-description = "Chatbot and Ai agent for Ferritienda"
+description = "Chatbot and AI agent for Ferritienda"
 authors = ["dianasolangel <dianasolangelfh@gmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = ">=3.10,<4.0"  
-numpy = "^2.2.3"
-selenium = "^4.12.0"
-pytesseract = "^0.3.10"
-pdf2image = "^1.16.3"
-Pillow = "^9.3.0"
+python = ">=3.11,<3.13"
 requests = "^2.31.0"
 pandas = "^2.1.1"
+numpy = "^2.2.3"
 matplotlib = "^3.7.2"
-ipykernel = "^6.29.5"
 streamlit = "^1.42.2"
 scikit-learn = "^1.6.1"
 beautifulsoup4 = "^4.13.3"
 lxml = "^5.3.1"
+selenium = "^4.12.0"
+pytesseract = "^0.3.10"
+pdf2image = "^1.16.3"
+Pillow = "^9.3.0"
+ipykernel = "^6.29.5"
 jupyter = "^1.1.1"
 fake-useragent = "^2.0.3"
 webdriver-manager = "^4.0.2"
@@ -35,19 +35,17 @@ chromadb = "^1.0.12"
 accelerate = "^1.7.0"
 sentence-transformers = "^4.1.0"
 langchain-community = "^0.3.24"
+langchain-chroma = "^0.2.4"
+sqlalchemy = "^2.0"
+psycopg2-binary = "^2.9"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
+pre-commit = "^4.1.0"
 pytest = "^8.3.4"
 flake8 = "7.1.2"
 black = "25.1.0"
 mypy = "^1.5.1"
 isort = "^5.12.0"
-
-[tool.poetry.group.dev.dependencies]
-black = "^25.1.0"
-flake8 = "^7.1.2"
-pre-commit = "^4.1.0"
-ipykernel = "^6.29.5"
 
 [build-system]
 requires = ["poetry-core"]
