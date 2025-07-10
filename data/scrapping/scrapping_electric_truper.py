@@ -209,11 +209,9 @@ class Scraper():
 
             if data:
                 scraped_data = data[0]
-                original_df.at[original_index, "Descripcion"] = scraped_data["definicion"]
-                original_df.at[original_index, "Caracteristicas"] = scraped_data["caracteristicas"]
+                original_df.at[original_index, "Descripción"] = scraped_data["definicion"] + " " + scraped_data["caracteristicas"]
             else:
-                original_df.at[original_index, "Descripcion"] = np.nan
-                original_df.at[original_index, "Caracteristicas"] = np.nan
+                original_df.at[original_index, "Descripción"] = np.nan
 
             time.sleep(random.uniform(10, 30))  # Add delay between scrapes
 
@@ -235,8 +233,8 @@ if __name__ == "__main__":
     "Código del producto o servicio", 
     "Referencia", 
     "Unidad de medida", 
-    "Categoría", 
-    "Descripción", 
+    "Categoria", 
+    "Descripcion", 
     "Costo inicial", 
     "Precio base", 
     "Impuesto", 
@@ -253,42 +251,61 @@ if __name__ == "__main__":
     "Código de barras 3", 
     "Código de barras"
     ]
-    data = data.drop(columns=["Código del producto o servicio", "Precio lista general 2023", "Código de barras 2", 
-        "Código de barras 3" ])
+    data = data.drop(columns=[ "Código del producto o servicio", "Unidad de medida", 
+    "Costo inicial", 
+    "Precio base", 
+    "Impuesto", 
+    "Precio total", 
+    "Precio general", 
+    "Precio lista general 2023", 
+    "Código cuenta contable", 
+    "Cuenta contable", 
+    "Código cuenta de inventario", 
+    "Cuenta de inventario", 
+    "Código cuenta de costo de venta", 
+    "Cuenta de costo de venta", 
+    "Código de barras 2", 
+    "Código de barras 3", 
+    "Código de barras" ])
     
     data["Marca"] = data["Nombre"].str.split().str[-1]
     
     # TRUPER PRODUCTS 
     truper_products = data[data["Marca"] == "TRUPER"].copy()
-    truper_products['Marca'] = truper_products['Marca'] + " " + truper_products['Descripción'].str.findall(r'\d+').str.join(" ")
+    truper_products['Marca'] = truper_products['Marca'] + " " + truper_products['Descripcion'].str.findall(r'\d+').str.join(" ")
     
-    truper_electric_tools = truper_products[
-    (truper_products["Categoría"] == "HERRAMIENTA ELECTRICA") | 
-    (truper_products["Categoría"] == "HERRAMIENTA MANUAL")
-    ]
-    sample_truper_electric_tools = truper_electric_tools.sample(100, random_state=42)
-    sample_truper_electric_tools.head()
+    # truper_electric_tools = truper_products[
+    # (truper_products["Categoría"] == "HERRAMIENTA ELECTRICA") | 
+    # (truper_products["Categoría"] == "HERRAMIENTA MANUAL")
+    # ]
+    # sample_truper_electric_tools = truper_electric_tools.sample(100, random_state=42)
+    # sample_truper_electric_tools.head()
     
-    sample_truper_electric_tools["Definicion"] = np.nan
-    sample_truper_electric_tools["Caracteristicas"] = np.nan
+    # sample_truper_electric_tools["Definicion"] = np.nan
+    # sample_truper_electric_tools["Caracteristicas"] = np.nan
     
     # sample_truper_electric_tools_ = sample_truper_electric_tools.sample(10)
-
+    already_sampled = pd.read_csv("sample_electric_truper_products.csv", sep=";", encoding="utf-8")
+    already_sampled_refs = already_sampled["Referencia"].unique()
+    truper_products_to_scrape = truper_products[~truper_products["Referencia"].isin(already_sampled_refs)]
+    
+    truper_products_to_scrape = truper_products_to_scrape.reset_index(drop=True)
+    first_block = truper_products_to_scrape.iloc[:100].copy()  # We take the first 100 products to scrape
     s = Scraper()
     
     batch_size = 5  # ✅ Process 5 products at a time
 
-    for start in range(0, len(sample_truper_electric_tools), batch_size):
-        end = min(start + batch_size, len(sample_truper_electric_tools))
+    for start in range(0, len(truper_products_to_scrape), batch_size):
+        end = min(start + batch_size, len(truper_products_to_scrape))
         print(f"\n🚀 Processing products {start} to {end}...\n")
 
-        batch_df = sample_truper_electric_tools.iloc[start:end]
+        batch_df = truper_products_to_scrape.iloc[start:end]
         # We scrape batch and update the original DataFrame
-        sample_truper_electric_tools = s.scrap_df(batch_df, sample_truper_electric_tools)
+        truper_products_to_scrape = s.scrap_df(batch_df, truper_products_to_scrape)
 
         delay = np.random.uniform(30, 90)
         print(f"⏳ Waiting {delay:.2f} seconds before next batch...\n")
         time.sleep(delay)
 
     print("✅ Scraping completed for all products!")
-    sample_truper_electric_tools.to_csv("data/scraped_electric_truper_data_2.csv", sep=";", index=False)
+    truper_products_to_scrape.to_csv("data/scraped_electric_truper_data_rest.csv", sep=";", index=False)
