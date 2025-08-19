@@ -1,65 +1,90 @@
-import pandas as pd
-import ast
+import os, json
+from datetime import datetime
 from operator import itemgetter
-from langchain_core.chat_history import BaseChatMessageHistory
-from langchain_core.chat_history import InMemoryChatMessageHistory
+
+import pandas as pd  # (kept if you use it elsewhere)
+import ast
+
+from langchain_core.chat_history import BaseChatMessageHistory, InMemoryChatMessageHistory
 from langchain_chroma import Chroma
-from langchain_huggingface import HuggingFaceEmbeddings  # NUEVO IMPORT
-from langchain_huggingface import HuggingFaceEndpoint, ChatHuggingFace
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_ollama import ChatOllama
 from langchain.prompts import ChatPromptTemplate
 from langchain.schema.output_parser import StrOutputParser
-from langchain.memory import ConversationBufferMemory
-from langchain_core.runnables import RunnableParallel, RunnablePassthrough
+from langchain_core.runnables import RunnableParallel, RunnablePassthrough, RunnableLambda
 from langchain_core.runnables.history import RunnableWithMessageHistory
-import json
-import os
-import ast
-from datetime import datetime
 
-# Load and prepare data
-embedding_function = HuggingFaceEmbeddings(model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
+# =========================
+# 1) Embeddings & Vector DB : We get the DB
+# =========================
+embedding_function = HuggingFaceEmbeddings(
+    model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+)
 
 vectorstore = Chroma(
     persist_directory="./chroma_db",
-    embedding_function=embedding_function,
-    collection_name="electric_tools_sample"
+    collection_name="electric_tools_sample",
+    embedding_function=embedding_function
 )
-# Load the vectorstore from the persistent directory
-retriever = vectorstore.as_retriever()
+retriever = vectorstore.as_retriever() 
 
-# Define primary and fallback LLMs
-llm = HuggingFaceEndpoint(
-    repo_id="meta-llama/Meta-Llama-3-70B-Instruct",
-    task="conversational",
-    temperature=0.7,
-    max_new_tokens=512,
+# =========================
+# 2) LLMs via Ollama (primary + fallback)
+# =========================
+# When running this code inside Docker, set base_url="http://host.docker.internal:11434"
+OLLAMA_BASE = os.environ.get("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
+
+chat = ChatOllama(
+    model="qwen2.5:1.5b",  #qwen2.5:3b              # good Spanish + quality
+    base_url=OLLAMA_BASE,
+    temperature=0.0,                  # deterministic & faster for RAG
+    num_ctx=2048,
+    num_predict=160,                  # cap output length to reduce latency
+    keep_alive="30m",
+    timeout=120,
 )
-chat = ChatHuggingFace(llm=llm)
 
-llm_fallback = HuggingFaceEndpoint(
-    repo_id="meta-llama/Meta-Llama-3-8B-Instruct",
-    task="conversational",
-    temperature=0.7,
-    max_new_tokens=512,
+chat_fallback = ChatOllama(
+    model="qwen2.5:1.5b",             # faster fallback
+    base_url=OLLAMA_BASE,
+    temperature=0.0,
+    num_ctx=2048,
+    num_predict=140,
+    keep_alive="30m",
+    timeout=120,
 )
-chat_fallback = ChatHuggingFace(llm=llm_fallback)
 
-# Step 4: Prompt and chains
+# =========================
+# 3) Prompt & Chains
+# =========================
 prompt = ChatPromptTemplate.from_messages([
-    ("system", "Eres un asistente experto en herramientas eléctricas de ferretería. Usa el contexto proporcionado., hazlo de manera natural y amable. Si no sabes, di: 'No tengo suficiente información'."),
-    ("user", "Contexto: {context}\n\nPregunta: {question}")
+    ("system", "Eres un asistente experto en herramientas eléctricas de ferretería. "
+               "Usa el contexto proporcionado de manera natural y amable. "
+               "Si no sabes, di: 'No tengo suficiente información'. "
+               "Responde SIEMPRE en español neutro."),
+    ("user", "Contexto:\n{context}\n\nPregunta: {question}")
 ])
 
 primary_chain = prompt | chat | StrOutputParser()
 fallback_chain = prompt | chat_fallback | StrOutputParser()
 main_chain = primary_chain.with_fallbacks([fallback_chain])
 
-rag_chain = RunnableParallel({
-    "context": itemgetter("question") | retriever,
-    "question": RunnablePassthrough()
-}) | main_chain
+# --- format retrieved docs into plain text
+def format_docs(docs):
+    # docs is a List[Document]; join only the text
+    return "\n\n".join(f"- {d.page_content}" for d in docs)
 
-# Step 5: Chat history support
+rag_chain = (
+    RunnableParallel({
+        "context": itemgetter("question") | retriever | RunnableLambda(format_docs),
+        "question": RunnablePassthrough()
+    })
+    | main_chain
+)
+
+# =========================
+# 4) Chat history
+# =========================
 chat_histories = {}
 
 def get_chat_history(session_id: str = "default") -> BaseChatMessageHistory:
@@ -74,14 +99,16 @@ rag_with_memory = RunnableWithMessageHistory(
     history_messages_key="history"
 )
 
-# Step 6: Interactive function
-
+# =========================
+# 5) Logging + Answer function
+# =========================
 def log_conversation(session_id, question, answer):
-    os.makedirs("logs", exist_ok=True)  # ✅ Crea el directorio si no existe
+    os.makedirs("logs", exist_ok=True)
     log_entry = {
         "session_id": session_id,
         "question": question,
-        "answer": answer
+        "answer": answer,
+        "timestamp": datetime.now().isoformat()
     }
     with open("logs/conversations.jsonl", "a") as f:
         f.write(json.dumps(log_entry, ensure_ascii=False) + "\n")
@@ -94,13 +121,21 @@ def answer(query, session_id="default"):
     log_conversation(session_id, query, response)
     return response
 
-# Step 7: Example usage in terminal
+# =========================
+# 6) Terminal UI
+# =========================
 if __name__ == "__main__":
-    print("🛠️ Asistente de Ferretería: Pregúntame sobre herramientas eléctricas Truper.")
+    print("🛠️ Asistente de Ferretería : Pregúntame sobre  productos de Ferritienda.")
+    session_id = "default"
     while True:
         user_input = input("🔍 Tu pregunta (o 'salir' para terminar): ")
         if user_input.lower() in ["salir", "exit"]:
             print("👋 ¡Hasta luego!")
             break
-        respuesta = answer(user_input)
+        respuesta = answer(user_input, session_id=session_id)
         print("💬 Respuesta:", respuesta)
+
+        history = get_chat_history(session_id).messages
+        print("\n🧾 Historial:")
+        for msg in history:
+            print(f"{msg.type.upper()}: {msg.content}")

@@ -1,5 +1,7 @@
 services:
   chroma:
+    container_name: chroma_ferriatienda
+
     image: chromadb/chroma
     ports:
       - "8000:8000"
@@ -22,10 +24,23 @@ services:
   #     interval: 10s
   #     timeout: 5s
   #     retries: 10
+  postgres:
+    image: postgres:15
+    container_name: postgres_ferriatienda
+    restart: always
+    environment:
+      POSTGRES_DB: ${PG_DATABASE}
+      POSTGRES_USER: ${PG_USER}
+      POSTGRES_PASSWORD: ${PG_PASSWORD}
+    ports:
+      - "${PG_PORT}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
 
   ferriatienda_app:
     build: .
     container_name: ferriatienda_app
+    #depends_on: database 
     ports:
       - "8501:8501"
     volumes:
@@ -35,3 +50,7 @@ services:
 
 volumes:
   chroma_data:
+  postgres_data:
+
+# networks:
+#   projet_fil_rouge_default:
