@@ -38,6 +38,8 @@ langchain-community = "^0.3.24"
 langchain-chroma = "^0.2.4"
 sqlalchemy = "^2.0"
 psycopg2-binary = "^2.9"
+langchain-core = "^0.3.74"
+langchain-ollama = "^0.3.6"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^4.1.0"

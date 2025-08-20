@@ -2,7 +2,7 @@ import os, json
 from datetime import datetime
 from operator import itemgetter
 
-import pandas as pd  # (kept if you use it elsewhere)
+import pandas as pd 
 import ast
 
 from langchain_core.chat_history import BaseChatMessageHistory, InMemoryChatMessageHistory
@@ -14,25 +14,55 @@ from langchain.schema.output_parser import StrOutputParser
 from langchain_core.runnables import RunnableParallel, RunnablePassthrough, RunnableLambda
 from langchain_core.runnables.history import RunnableWithMessageHistory
 
+import os
+import chromadb
+from langchain_chroma import Chroma
+from langchain_huggingface import HuggingFaceEmbeddings
+
 # =========================
 # 1) Embeddings & Vector DB : We get the DB
 # =========================
+# embedding_function = HuggingFaceEmbeddings(
+#     model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+# )
+
+# vectorstore = Chroma(
+#     persist_directory="./chroma_db",
+#     collection_name="electric_tools_sample",
+#     embedding_function=embedding_function
+# )
+# retriever = vectorstore.as_retriever() 
+
+# --- Config via env (works in Docker compose & locally)
+CHROMA_HOST = os.environ.get("CHROMA_HOST", "chroma")
+CHROMA_PORT = int(os.environ.get("CHROMA_PORT", "8000"))
+
+
 embedding_function = HuggingFaceEmbeddings(
     model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 )
 
+# Cliente HTTP al servidor Chroma
+chroma_client = chromadb.HttpClient(host=CHROMA_HOST, port=CHROMA_PORT)
+
+# Vectorstore apuntando a la colección del servidor
 vectorstore = Chroma(
-    persist_directory="./chroma_db",
+    client=chroma_client,
     collection_name="electric_tools_sample",
-    embedding_function=embedding_function
+    embedding_function=embedding_function,
 )
-retriever = vectorstore.as_retriever() 
+
+# Retriever (MMR recomendado)
+retriever = vectorstore.as_retriever(
+    search_type="mmr",
+    search_kwargs={"k": 5, "fetch_k": 12, "lambda_mult": 0.6},
+)
 
 # =========================
 # 2) LLMs via Ollama (primary + fallback)
 # =========================
 # When running this code inside Docker, set base_url="http://host.docker.internal:11434"
-OLLAMA_BASE = os.environ.get("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
+OLLAMA_BASE = os.environ.get("OLLAMA_BASE_URL", "http://ollama:11434")
 
 chat = ChatOllama(
     model="qwen2.5:1.5b",  #qwen2.5:3b              # good Spanish + quality
@@ -41,7 +71,7 @@ chat = ChatOllama(
     num_ctx=2048,
     num_predict=160,                  # cap output length to reduce latency
     keep_alive="30m",
-    timeout=120,
+    request_timeout=120,
 )
 
 chat_fallback = ChatOllama(
@@ -51,7 +81,7 @@ chat_fallback = ChatOllama(
     num_ctx=2048,
     num_predict=140,
     keep_alive="30m",
-    timeout=120,
+    request_timeout=120,
 )
 
 # =========================

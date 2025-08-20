@@ -1,15 +1,41 @@
 services:
   chroma:
     container_name: chroma_ferriatienda
-
-    image: chromadb/chroma
+    image: chromadb/chroma:1.0.12
     ports:
       - "8000:8000"
     volumes:
-      - chroma_data:/chroma/.chroma
+      - chroma_data:/chroma/.chroma   # <- server persistence
     restart: always
 
-  # elasticsearch:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: always
+
+  ferriatienda_app:
+    build: .
+    container_name: ferriatienda_app
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - CHROMA_HOST=chroma
+      - CHROMA_PORT=8000
+    ports:
+      - "8501:8501"
+    volumes:
+      - .:/app
+      - ~/.cache/huggingface:/root/.cache/huggingface
+    depends_on:
+      - chroma
+      - ollama
+      - postgres
+    command: poetry run streamlit run ferriatienda/streamlit_app.py
+  
+    # elasticsearch:
   #   image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
   #   container_name: elasticsearch
   #   environment:
@@ -37,20 +63,11 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
-  ferriatienda_app:
-    build: .
-    container_name: ferriatienda_app
-    #depends_on: database 
-    ports:
-      - "8501:8501"
-    volumes:
-      - .:/app
-      - ~/.cache/huggingface:/root/.cache/huggingface # Cache for Hugging Face models
-    command: poetry run streamlit run ferriatienda/streamlit_app.py
-
 volumes:
   chroma_data:
+  ollama_data:
   postgres_data:
 
-# networks:
-#   projet_fil_rouge_default:
+
+
+
