@@ -1894,14 +1894,14 @@ files = [
 
 [[package]]
 name = "huggingface-hub"
-version = "0.32.6"
+version = "0.32.5"
 description = "Client library to download and publish models, datasets and other repos on the huggingface.co hub"
 optional = false
 python-versions = ">=3.8.0"
 groups = ["main"]
 files = [
-    {file = "huggingface_hub-0.32.6-py3-none-any.whl", hash = "sha256:32cde9558c965477556edca72352621def7fbc42e167aaf33f4cdb9af65bb28b"},
-    {file = "huggingface_hub-0.32.6.tar.gz", hash = "sha256:8e960f23dc57519c6c2a0bbc7e9bc030eaa14e7f2d61f8e68fd3d025dabed2fa"},
+    {file = "huggingface_hub-0.32.5-py3-none-any.whl", hash = "sha256:6df8d5f42034a1b61daac60eed04acf348d337a4bd83aa448d4235cfb003e379"},
+    {file = "huggingface_hub-0.32.5.tar.gz", hash = "sha256:8328f848218e3212647cec77eab9fdfc2590e8117d979b925439bc01042a20de"},
 ]
 
 [package.dependencies]
@@ -2778,20 +2778,20 @@ tenacity = ">=8.1.0,<8.4.0 || >8.4.0,<10"
 
 [[package]]
 name = "langchain-core"
-version = "0.3.68"
+version = "0.3.74"
 description = "Building applications with LLMs through composability"
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "langchain_core-0.3.68-py3-none-any.whl", hash = "sha256:5e5c1fbef419590537c91b8c2d86af896fbcbaf0d5ed7fdcdd77f7d8f3467ba0"},
-    {file = "langchain_core-0.3.68.tar.gz", hash = "sha256:312e1932ac9aa2eaf111b70fdc171776fa571d1a86c1f873dcac88a094b19c6f"},
+    {file = "langchain_core-0.3.74-py3-none-any.whl", hash = "sha256:088338b5bc2f6a66892f9afc777992c24ee3188f41cbc603d09181e34a228ce7"},
+    {file = "langchain_core-0.3.74.tar.gz", hash = "sha256:ff604441aeade942fbcc0a3860a592daba7671345230c2078ba2eb5f82b6ba76"},
 ]
 
 [package.dependencies]
 jsonpatch = ">=1.33,<2.0"
 langsmith = ">=0.3.45"
-packaging = ">=23.2,<25"
+packaging = ">=23.2"
 pydantic = ">=2.7.4"
 PyYAML = ">=5.3"
 tenacity = ">=8.1.0,<8.4.0 || >8.4.0,<10.0.0"
@@ -2815,6 +2815,22 @@ langchain-core = ">=0.3.59,<1.0.0"
 sentence-transformers = ">=2.6.0"
 tokenizers = ">=0.19.1"
 transformers = ">=4.39.0"
+
+[[package]]
+name = "langchain-ollama"
+version = "0.3.6"
+description = "An integration package connecting Ollama and LangChain"
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "langchain_ollama-0.3.6-py3-none-any.whl", hash = "sha256:b339bd3fcf913b8d606ad426ef39e7122695532507fcd85aa96271b3f33dc3df"},
+    {file = "langchain_ollama-0.3.6.tar.gz", hash = "sha256:4270c4b30b3f3d10850cb9a1183b8c77d616195e0d9717ac745ef7f7f6cc2b6e"},
+]
+
+[package.dependencies]
+langchain-core = ">=0.3.70,<1.0.0"
+ollama = ">=0.5.1,<1.0.0"
 
 [[package]]
 name = "langchain-text-splitters"
@@ -4028,6 +4044,22 @@ files = [
 rsa = ["cryptography (>=3.0.0)"]
 signals = ["blinker (>=1.4.0)"]
 signedtoken = ["cryptography (>=3.0.0)", "pyjwt (>=2.0.0,<3)"]
+
+[[package]]
+name = "ollama"
+version = "0.5.3"
+description = "The official Python client for Ollama."
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+files = [
+    {file = "ollama-0.5.3-py3-none-any.whl", hash = "sha256:a8303b413d99a9043dbf77ebf11ced672396b59bec27e6d5db67c88f01b279d2"},
+    {file = "ollama-0.5.3.tar.gz", hash = "sha256:40b6dff729df3b24e56d4042fd9d37e231cee8e528677e0d085413a1d6692394"},
+]
+
+[package.dependencies]
+httpx = ">=0.27"
+pydantic = ">=2.9"
 
 [[package]]
 name = "onnxruntime"
@@ -7776,4 +7808,4 @@ cffi = ["cffi (>=1.11)"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<3.13"
-content-hash = "028014dd022776875996e51956601cbc024b95d72ed32e1a33e845a7d3e9466e"
+content-hash = "a48462337a44242f9d5f9b8a5cd8e34933330cef22fa39329b6a0845c1ba154f"

@@ -5,7 +5,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - chroma_data:/chroma/.chroma   # <- server persistence
+      - ./chroma_db:/chroma/.chroma   # ✅ Persistance locale des embeddings
     restart: always
 
   ollama:
@@ -15,10 +15,12 @@ services:
       - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
-    restart: always
+    # restart: always
 
   ferriatienda_app:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: ferriatienda_app
     environment:
       - OLLAMA_BASE_URL=http://ollama:11434
@@ -27,29 +29,23 @@ services:
     ports:
       - "8501:8501"
     volumes:
-      - .:/app
+      # ✅ Monte uniquement le code source, pas tout le dossier
+      - ./ferriatienda:/app/ferriatienda
+      # ✅ Persiste les modèles Hugging Face téléchargés une seule fois
       - ~/.cache/huggingface:/root/.cache/huggingface
+      # ✅ Persiste les logs en local
+      - ./logs:/app/logs
+      # ✅ Persiste les embeddings localement pour éviter de les recalculer
+      - ./chroma_db:/app/chroma_db
+      #extras 
+      - ./ferriatienda/debug:/app/ferriatienda/debug
+      - ./data:/app/data
     depends_on:
       - chroma
       - ollama
       - postgres
     command: poetry run streamlit run ferriatienda/streamlit_app.py
-  
-    # elasticsearch:
-  #   image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
-  #   container_name: elasticsearch
-  #   environment:
-  #     - discovery.type=single-node
-  #     - xpack.security.enabled=false
-  #   ports:
-  #     - "9200:9200"
-  #   volumes:
-  #     - esdata:/usr/share/elasticsearch/data
-  #   healthcheck:
-  #     test: curl -s http://localhost:9200 || exit 1
-  #     interval: 10s
-  #     timeout: 5s
-  #     retries: 10
+
   postgres:
     image: postgres:15
     container_name: postgres_ferriatienda
@@ -67,7 +63,3 @@ volumes:
   chroma_data:
   ollama_data:
   postgres_data:
-
-
-
-

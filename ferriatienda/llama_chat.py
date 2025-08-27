@@ -65,7 +65,7 @@ retriever = vectorstore.as_retriever(
 OLLAMA_BASE = os.environ.get("OLLAMA_BASE_URL", "http://ollama:11434")
 
 chat = ChatOllama(
-    model="qwen2.5:1.5b",  #qwen2.5:3b              # good Spanish + quality
+    model="qwen2.5:1.5b",  #qwen2.5:3b          model="qwen2.5:1.5b"     # good Spanish + quality
     base_url=OLLAMA_BASE,
     temperature=0.0,                  # deterministic & faster for RAG
     num_ctx=2048,

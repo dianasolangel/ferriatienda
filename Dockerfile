@@ -1,38 +1,39 @@
-# Usa una imagen base oficial de Python
+# ---- BASE IMAGE ----
 FROM python:3.11-slim
 
-# Evita problemas de input en contenedores
-ENV PYTHONUNBUFFERED=1
+# ---- ENVIRONMENT VARIABLES ----
+ENV PYTHONUNBUFFERED=1 \
+    POETRY_HOME="/opt/poetry" \
+    POETRY_VIRTUALENVS_CREATE=true \
+    POETRY_VIRTUALENVS_IN_PROJECT=true \
+    POETRY_NO_INTERACTION=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PATH="/opt/poetry/bin:/app/.venv/bin:$PATH"
 
-# Variables de entorno para Poetry
-ENV POETRY_HOME="/opt/poetry" \
-    POETRY_VIRTUALENVS_CREATE=false \
-    POETRY_NO_INTERACTION=1
+# ---- SYSTEM DEPENDENCIES ----
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    curl build-essential git && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
-ENV PATH="$POETRY_HOME/bin:$PATH"
-
-# Instala curl y otras dependencias necesarias
-RUN apt-get update && apt-get install -y curl build-essential && apt-get clean
-
-# Instala Poetry
+# ---- INSTALL POETRY ----
 RUN curl -sSL https://install.python-poetry.org | python3 -
 
-# Establece el directorio de trabajo
+# ---- SET WORKDIR ----
 WORKDIR /app
 
-# Copia primero los archivos de dependencias (mejor para cache)
+# ---- COPY DEPENDENCY FILES ----
 COPY pyproject.toml poetry.lock ./
 
-# Instala las dependencias del proyecto
-RUN poetry install --no-root && pip install --upgrade pip && \
-    pip install sentence-transformers && pip install --upgrade huggingface-hub transformers \
-    && pip install --upgrade langchain-huggingface
+# ---- INSTALL DEPENDENCIES ----
+RUN poetry install --no-root
 
-# Copia el resto del proyecto
+# ---- COPY THE REST OF THE PROJECT ----
 COPY . .
 
-# Puerto expuesto (opcional si usas Streamlit)
+# ---- EXPOSE STREAMLIT PORT ----
 EXPOSE 8501
 
-# Comando por defecto (modifica según tu app principal)
+# ---- DEFAULT COMMAND ----
 CMD ["poetry", "run", "streamlit", "run", "ferriatienda/streamlit_app.py"]

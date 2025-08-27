@@ -12,3 +12,6 @@ models/
 *.bin
 *.safetensors
 *.pt
+.DS_Store
+chroma_db/
+data/attachments/
