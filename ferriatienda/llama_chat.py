@@ -19,6 +19,12 @@ import chromadb
 from langchain_chroma import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
 
+
+from langchain_core.caches import InMemoryCache
+from langchain.globals import set_llm_cache
+
+set_llm_cache(InMemoryCache()) # to  avoid recomputing embeddings & reranking for repeated queries.
+
 # =========================
 # 1) Embeddings & Vector DB : We get the DB
 # =========================
@@ -52,10 +58,15 @@ vectorstore = Chroma(
     embedding_function=embedding_function,
 )
 
-# Retriever (MMR recomendado)
+# # Retriever (MMR recomendado)
+# retriever = vectorstore.as_retriever(
+#     search_type="mmr",
+#     search_kwargs={"k": 1, "fetch_k": 12, "lambda_mult": 0.6}, #
+# ) #ok
+#intentar 
 retriever = vectorstore.as_retriever(
-    search_type="mmr",
-    search_kwargs={"k": 5, "fetch_k": 12, "lambda_mult": 0.6},
+    search_type="similarity",
+    search_kwargs={"k": 1}  # On augmente le nombre de documents
 )
 
 # =========================
@@ -65,21 +76,21 @@ retriever = vectorstore.as_retriever(
 OLLAMA_BASE = os.environ.get("OLLAMA_BASE_URL", "http://ollama:11434")
 
 chat = ChatOllama(
-    model="qwen2.5:1.5b",  #qwen2.5:3b          model="qwen2.5:1.5b"     # good Spanish + quality
+    model= "qwen2.5:1.5b", #"qwen2.5:0.5b", ,  #qwen2.5:3b          model="qwen2.5:1.5b"     # good Spanish + quality
     base_url=OLLAMA_BASE,
-    temperature=0.0,                  # deterministic & faster for RAG
-    num_ctx=2048,
-    num_predict=160,                  # cap output length to reduce latency
+    temperature=0.3,                  # deterministic & faster for RAG
+    num_ctx=2048,  # c
+    num_predict=300,  #c                # cap output length to reduce latency
     keep_alive="30m",
     request_timeout=120,
 )
 
 chat_fallback = ChatOllama(
-    model="qwen2.5:1.5b",             # faster fallback
+    model="qwen2.5:0.5b",             # faster fallback
     base_url=OLLAMA_BASE,
-    temperature=0.0,
-    num_ctx=2048,
-    num_predict=140,
+    temperature=0.3,
+    num_ctx=2048, 
+    num_predict=300,
     keep_alive="30m",
     request_timeout=120,
 )
@@ -89,20 +100,19 @@ chat_fallback = ChatOllama(
 # =========================
 prompt = ChatPromptTemplate.from_messages([
     ("system", "Eres un asistente experto en herramientas eléctricas de ferretería. "
-               "Usa el contexto proporcionado de manera natural y amable. "
-               "Si no sabes, di: 'No tengo suficiente información'. "
+               "Responde SÓLO usando la información del contexto don un tono de servicio al cliente. "
+               "Si el contexto no tiene suficiente información, responde EXACTAMENTE: "
+               "'No tengo suficiente información'. "
                "Responde SIEMPRE en español neutro."),
     ("user", "Contexto:\n{context}\n\nPregunta: {question}")
 ])
-
 primary_chain = prompt | chat | StrOutputParser()
 fallback_chain = prompt | chat_fallback | StrOutputParser()
 main_chain = primary_chain.with_fallbacks([fallback_chain])
 
 # --- format retrieved docs into plain text
 def format_docs(docs):
-    # docs is a List[Document]; join only the text
-    return "\n\n".join(f"- {d.page_content}" for d in docs)
+    return "\n\n".join(f"- {d.page_content[:400]}" for d in docs)
 
 rag_chain = (
     RunnableParallel({

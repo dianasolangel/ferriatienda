@@ -58,6 +58,7 @@ data/
 embeddings/
 index/
 vectorstore/
+!chroma_db/
 
 # ==========================
 # 4. Docker, build, node, misc

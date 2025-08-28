@@ -8,7 +8,8 @@ ENV PYTHONUNBUFFERED=1 \
     POETRY_VIRTUALENVS_IN_PROJECT=true \
     POETRY_NO_INTERACTION=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    PATH="/opt/poetry/bin:/app/.venv/bin:$PATH"
+    PATH="/opt/poetry/bin:/app/.venv/bin:$PATH" \
+    PYTHONPATH=/app
 
 # ---- SYSTEM DEPENDENCIES ----
 RUN apt-get update && \

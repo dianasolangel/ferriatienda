@@ -14,8 +14,8 @@ services:
     ports:
       - "11434:11434"
     volumes:
-      - ollama_data:/root/.ollama
-    # restart: always
+      - ./ollama_models:/root/.ollama  
+    restart: always
 
   ferriatienda_app:
     build:
