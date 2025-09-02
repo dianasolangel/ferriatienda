@@ -5,7 +5,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./chroma_db:/chroma/.chroma   # ✅ Persistance locale des embeddings
+      - ./chroma_db:/data 
     restart: always
 
   ollama:

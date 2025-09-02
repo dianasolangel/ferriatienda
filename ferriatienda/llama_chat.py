@@ -13,6 +13,8 @@ from langchain.prompts import ChatPromptTemplate
 from langchain.schema.output_parser import StrOutputParser
 from langchain_core.runnables import RunnableParallel, RunnablePassthrough, RunnableLambda
 from langchain_core.runnables.history import RunnableWithMessageHistory
+from langchain.chains import ConversationalRetrievalChain
+from langchain.memory import ConversationBufferMemory
 
 import os
 import chromadb
@@ -153,29 +155,54 @@ def log_conversation(session_id, question, answer):
     with open("logs/conversations.jsonl", "a") as f:
         f.write(json.dumps(log_entry, ensure_ascii=False) + "\n")
 
+# def answer(query, session_id="default"):
+#     response = rag_with_memory.invoke(
+#         {"question": query},
+#         config={"configurable": {"session_id": session_id}}
+#     )
+#     log_conversation(session_id, query, response)
+#     return response
+
+#With context
+sessions_memory = {}
+
+def get_memory(session_id):
+    if session_id not in sessions_memory:
+        sessions_memory[session_id] = ConversationBufferMemory(
+            memory_key="chat_history",
+            return_messages=True
+        )
+    return sessions_memory[session_id]
+
 def answer(query, session_id="default"):
-    response = rag_with_memory.invoke(
-        {"question": query},
-        config={"configurable": {"session_id": session_id}}
+    memory = get_memory(session_id)
+
+    rag = ConversationalRetrievalChain.from_llm(
+        llm=chat,
+        retriever=retriever,
+        memory=memory,
+        return_source_documents=False,
     )
-    log_conversation(session_id, query, response)
-    return response
 
-# =========================
-# 6) Terminal UI
-# =========================
-if __name__ == "__main__":
-    print("🛠️ Asistente de Ferretería : Pregúntame sobre  productos de Ferritienda.")
-    session_id = "default"
-    while True:
-        user_input = input("🔍 Tu pregunta (o 'salir' para terminar): ")
-        if user_input.lower() in ["salir", "exit"]:
-            print("👋 ¡Hasta luego!")
-            break
-        respuesta = answer(user_input, session_id=session_id)
-        print("💬 Respuesta:", respuesta)
+    response = rag.invoke({"question": query})
+    log_conversation(session_id, query, response["answer"])
+    return response["answer"]
 
-        history = get_chat_history(session_id).messages
-        print("\n🧾 Historial:")
-        for msg in history:
-            print(f"{msg.type.upper()}: {msg.content}")
+# # =========================
+# # 6) Terminal UI
+# # =========================
+# if __name__ == "__main__":
+#     print("🛠️ Asistente de Ferretería : Pregúntame sobre  productos de Ferritienda.")
+#     session_id = "default"
+#     while True:
+#         user_input = input("🔍 Tu pregunta (o 'salir' para terminar): ")
+#         if user_input.lower() in ["salir", "exit"]:
+#             print("👋 ¡Hasta luego!")
+#             break
+#         respuesta = answer(user_input, session_id=session_id)
+#         print("💬 Respuesta:", respuesta)
+
+#         history = get_chat_history(session_id).messages
+#         print("\n🧾 Historial:")
+#         for msg in history:
+#             print(f"{msg.type.upper()}: {msg.content}")
