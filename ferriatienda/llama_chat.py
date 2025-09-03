@@ -25,6 +25,11 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_core.caches import InMemoryCache
 from langchain.globals import set_llm_cache
 
+#HF models
+from langchain_huggingface import HuggingFaceEndpoint
+from langchain_huggingface.chat_models import ChatHuggingFace
+
+
 set_llm_cache(InMemoryCache()) # to  avoid recomputing embeddings & reranking for repeated queries.
 
 # =========================
@@ -77,15 +82,24 @@ retriever = vectorstore.as_retriever(
 # When running this code inside Docker, set base_url="http://host.docker.internal:11434"
 OLLAMA_BASE = os.environ.get("OLLAMA_BASE_URL", "http://ollama:11434")
 
-chat = ChatOllama(
-    model= "qwen2.5:1.5b", #"qwen2.5:0.5b", ,  #qwen2.5:3b          model="qwen2.5:1.5b"     # good Spanish + quality
-    base_url=OLLAMA_BASE,
-    temperature=0.3,                  # deterministic & faster for RAG
-    num_ctx=2048,  # c
-    num_predict=300,  #c                # cap output length to reduce latency
-    keep_alive="30m",
-    request_timeout=120,
+# chat = ChatOllama(
+#     model= "qwen2.5:1.5b", #"qwen2.5:0.5b", ,  #qwen2.5:3b          model="qwen2.5:1.5b"     # good Spanish + quality
+#     base_url=OLLAMA_BASE,
+#     temperature=0.3,                  # deterministic & faster for RAG
+#     num_ctx=2048,  # c
+#     num_predict=300,  #c                # cap output length to reduce latency
+#     keep_alive="30m",
+#     request_timeout=120,
+# )
+
+llm = HuggingFaceEndpoint(
+    repo_id="meta-llama/Meta-Llama-3-8B-Instruct",
+    task="conversational",
+    temperature=0.7,
+    max_new_tokens=512,
 )
+
+chat = ChatHuggingFace(llm=llm)
 
 chat_fallback = ChatOllama(
     model="qwen2.5:0.5b",             # faster fallback

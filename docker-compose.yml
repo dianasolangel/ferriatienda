@@ -28,6 +28,8 @@ services:
       - CHROMA_PORT=8000
     ports:
       - "8501:8501"
+    env_file:
+      - .env
     volumes:
       # ✅ Monte uniquement le code source, pas tout le dossier
       - ./ferriatienda:/app/ferriatienda
