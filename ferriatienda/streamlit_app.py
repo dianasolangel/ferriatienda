@@ -5,6 +5,7 @@ import os
 import uuid
 import json
 from ferriatienda.llama_chat import answer
+from ferriatienda.utils import send_conversation_email
 
 # === CONFIG ===
 st.set_page_config(page_title="Experto en Ferreterías", page_icon="💪", layout="centered")
@@ -29,17 +30,19 @@ st.markdown("<div class='title-section'>", unsafe_allow_html=True)
 st.markdown("<h1 class='title'>Ferritienda Chatbot</h1>", unsafe_allow_html=True)
 st.markdown("<p class='subtitle'>Pregúntale a un experto sobre los productos de Ferritienda 🔍</p>", unsafe_allow_html=True)
 
-st.markdown("<div class='button-container'>", unsafe_allow_html=True)
-if st.button("Nueva sesión"):
-    st.session_state.messages = []
-    st.session_state.session_id = str(uuid.uuid4())
-    st.session_state.clear_input = True
-    st.rerun()
-    
-st.markdown("</div>", unsafe_allow_html=True)
-st.markdown("</div>", unsafe_allow_html=True)  # fin title-section
+# === BOUTON DANS LA SIDEBAR === 
+with st.sidebar:
+    st.header("🛠️ Opciones") 
+    if st.button("🚀 Nueva sesión"):
+        st.session_state.messages = []
+        st.session_state.session_id = str(uuid.uuid4())
+        st.session_state.clear_input = True
+        st.rerun()
 
-# === SESSION STATE ===
+    if st.button("📧 Recibir conversación por correo"):
+        st.session_state.show_popup = True
+    
+# === SESSION STATES ===
 if "messages" not in st.session_state:
     st.session_state.messages = []
 if "session_id" not in st.session_state:
@@ -48,6 +51,10 @@ if "loading" not in st.session_state:
     st.session_state.loading = False
 if "clear_input" not in st.session_state:
     st.session_state.clear_input = False
+if "show_email_form" not in st.session_state:
+    st.session_state.show_email_form = False
+if "email_sent" not in st.session_state:
+    st.session_state.email_sent = False
 
 # # === NOUVELLE SESSION ===
 # if st.button("Nueva sesión"):
@@ -63,6 +70,7 @@ st.markdown("<div class='chat-wrapper'>", unsafe_allow_html=True)
 for msg in st.session_state.messages:
     role_class = "user-message" if msg["role"] == "user" else "bot-message"
     st.markdown(f"<div class='{role_class}'>{msg['content']}</div>", unsafe_allow_html=True)
+        
 if st.session_state.get("loading", False):
     st.markdown("""
         <div class='bot-message spinner-container'>
@@ -90,7 +98,7 @@ with col2:
         st.session_state.messages.append({"role": "user", "content": user_input.strip()})
         st.session_state.loading = True
         if "user_input" in st.session_state:
-            del st.session_state["user_input"]  # <-- on force l'effacement du champ
+            del st.session_state["user_input"] 
         st.rerun()
 st.markdown("</div>", unsafe_allow_html=True)
 
@@ -115,5 +123,43 @@ if st.session_state.get("loading", False):
         st.session_state.loading = False
         st.session_state.clear_input = True
         st.rerun()
+
+# === ENVOYER LA CONVERSATION PAR EMAIL ===
+if st.session_state.show_email_form and not st.session_state.email_sent:
+    st.markdown("<div class='email-popup'>", unsafe_allow_html=True)
+    st.subheader("¿Quieres recibir esta conversación por correo electrónico?")
+
+    with st.form("email_form"):
+        recipient_email = st.text_input("Introduce tu correo electrónico")
+        col1, col2 = st.columns([1, 1])
+        with col1:
+            submit_email = st.form_submit_button("Enviar")
+        with col2:
+            cancel_email = st.form_submit_button("Cerrar")
+
+        if cancel_email:
+            st.session_state.show_email_form = False
+            st.rerun()
+
+        if submit_email:
+            if not recipient_email:
+                st.error("Por favor, introduce un correo válido.")
+            else:
+                sent = send_conversation_email(
+                    recipient_email,
+                    subject="Resumen de tu conversación con Ferritienda",
+                    messages=st.session_state.messages
+                )
+                if sent:
+                    st.session_state.email_sent = True
+                    st.success("¡Correo enviado con éxito!")
+                    st.session_state.show_email_form = False
+                    st.rerun()
+                else:
+                    st.error("Error al enviar el correo.")
+    st.markdown("</div>", unsafe_allow_html=True)
+
+elif st.session_state.email_sent:
+    st.success("El resumen de la conversación fue enviado con éxito.")
 
 st.markdown("</div>", unsafe_allow_html=True)  # end main-container
