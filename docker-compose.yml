@@ -1,67 +1,86 @@
 services:
+  ferriatienda_app:
+    build:
+      context: .
+    env_file:
+      - .env
+    container_name: ferriatienda_app
+    ports:
+      - "8501:8501"
+    volumes:
+      - .:/app
+      - /app/.venv  # Ignore le .venv local, garde celui du conteneur 
+      - ~/.cache/huggingface:/root/.cache/huggingface  # 👈 Mount Hugging Face cache
+    depends_on:
+      - chroma
+    environment:
+      - PYTHONPATH=/app
+    # restart: unless-stopped
+    command: poetry run streamlit run ferriatienda/streamlit_app.py
+
   chroma:
     container_name: chroma_ferriatienda
     image: chromadb/chroma:1.0.12
     ports:
       - "8000:8000"
     volumes:
-      - ./chroma_db:/data 
+      - ./chroma_db:/data  
     restart: always
+# services:
+#   chroma:
+#     container_name: chroma_ferriatienda
+#     image: chromadb/chroma:1.0.12
+#     ports:
+#       - "8000:8000"
+#     volumes:
+#       - ./chroma_db:/data 
+#     restart: always
 
-  ollama:
-    image: ollama/ollama:latest
-    container_name: ollama
-    ports:
-      - "11434:11434"
-    volumes:
-      - ./ollama_models:/root/.ollama  
-    restart: always
+#   # ollama:
+#   #   image: ollama/ollama:latest
+#   #   container_name: ollama
+#   #   ports:
+#   #     - "11434:11434"
+#   #   volumes:
+#   #     - ./ollama_models:/root/.ollama  
+#   #   restart: always
 
-  ferriatienda_app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: ferriatienda_app
-    environment:
-      - OLLAMA_BASE_URL=http://ollama:11434
-      - CHROMA_HOST=chroma
-      - CHROMA_PORT=8000
-    ports:
-      - "8501:8501"
-    env_file:
-      - .env
-    volumes:
-      # ✅ Monte uniquement le code source, pas tout le dossier
-      - ./ferriatienda:/app/ferriatienda
-      # ✅ Persiste les modèles Hugging Face téléchargés une seule fois
-      - ~/.cache/huggingface:/root/.cache/huggingface
-      # ✅ Persiste les logs en local
-      - ./logs:/app/logs
-      # ✅ Persiste les embeddings localement pour éviter de les recalculer
-      - ./chroma_db:/app/chroma_db
-      #extras 
-      - ./ferriatienda/debug:/app/ferriatienda/debug
-      - ./data:/app/data
-    depends_on:
-      - chroma
-      - ollama
-      - postgres
-    command: poetry run streamlit run ferriatienda/streamlit_app.py
+#   ferriatienda_app:
+#     build:
+#       context: .
+#       dockerfile: Dockerfile
+#     container_name: ferriatienda_app
+#     environment:
+#       - OLLAMA_BASE_URL=http://ollama:11434
+#       - CHROMA_HOST=chroma
+#       - CHROMA_PORT=8000
+#     ports:
+#       - "8501:8501"
+#     env_file:
+#       - .env
+#     volumes:
+#       - .:/app
+#     depends_on:
+#       - chroma
+#       # - ollama
+#       # - postgres
+#     command: poetry run streamlit run ferriatienda/streamlit_app.py
 
-  postgres:
-    image: postgres:15
-    container_name: postgres_ferriatienda
-    restart: always
-    environment:
-      POSTGRES_DB: ${PG_DATABASE}
-      POSTGRES_USER: ${PG_USER}
-      POSTGRES_PASSWORD: ${PG_PASSWORD}
-    ports:
-      - "${PG_PORT}:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
 
-volumes:
-  chroma_data:
-  ollama_data:
-  postgres_data:
+#   # postgres:
+#   #   image: postgres:15
+#   #   container_name: postgres_ferriatienda
+#   #   restart: always
+#   #   environment:
+#   #     POSTGRES_DB: ${PG_DATABASE}
+#   #     POSTGRES_USER: ${PG_USER}
+#   #     POSTGRES_PASSWORD: ${PG_PASSWORD}
+#   #   ports:
+#   #     - "${PG_PORT}:5432"
+#   #   volumes:
+#   #     - postgres_data:/var/lib/postgresql/data
+
+# # volumes:
+# #   chroma_data:
+# #   ollama_data:
+# #   postgres_data:

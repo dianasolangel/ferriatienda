@@ -12,7 +12,7 @@ __pycache__/
 *.tmp
 *.bak
 *.swp
-*.idea/
+.idea/
 .vscode/
 *.ipynb_checkpoints
 
@@ -20,13 +20,12 @@ __pycache__/
 # 2. Local data & DBs
 # ==========================
 logs/
-chroma_db/
 *.db
-*.sqlite
+*.sqlite*
 *.jsonl
 *.json.gz
-.env
-.env.local
+# .env*
+.envrc
 
 # ==========================
 # 3. BIG files & ML models
@@ -52,13 +51,14 @@ huggingface/
 .cache/
 **/.cache/
 
-# Datasets & embeddings
+# Datasets & embeddings (allow only useful file)
 datasets/
 data/
+!data/scrapping/sample_electric_truper_products.csv  # <-- autorisé
 embeddings/
 index/
 vectorstore/
-!chroma_db/
+chroma_db/
 
 # ==========================
 # 4. Docker, build, node, misc
@@ -69,6 +69,8 @@ dist/
 tmp/
 coverage/
 .DS_Store
+.venv/
+**/.venv/
 
 # ==========================
 # 5. Notebooks, tests, reports
@@ -79,13 +81,3 @@ experiments/
 reports/
 tests/__pycache__/
 tests/outputs/
-
-
-.venv
-__pycache__
-*.pyc
-*.pyo
-*.pyd
-*.db
-*.sqlite3
-logs

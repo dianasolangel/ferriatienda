@@ -1,132 +1,67 @@
-import os, json
+import os
+import json
 from datetime import datetime
 from operator import itemgetter
 
-import pandas as pd 
-import ast
-
+import pandas as pd
 from langchain_core.chat_history import BaseChatMessageHistory, InMemoryChatMessageHistory
 from langchain_chroma import Chroma
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings, HuggingFaceEndpoint
 from langchain_ollama import ChatOllama
+from langchain_huggingface.chat_models import ChatHuggingFace
 from langchain.prompts import ChatPromptTemplate
 from langchain.schema.output_parser import StrOutputParser
 from langchain_core.runnables import RunnableParallel, RunnablePassthrough, RunnableLambda
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain.chains import ConversationalRetrievalChain
 from langchain.memory import ConversationBufferMemory
-
-import os
-import chromadb
-from langchain_chroma import Chroma
-from langchain_huggingface import HuggingFaceEmbeddings
-
-
 from langchain_core.caches import InMemoryCache
 from langchain.globals import set_llm_cache
+# to start chroma client
+from ferriatienda.startup import get_or_build_retriever
 
-#HF models
-from langchain_huggingface import HuggingFaceEndpoint
-from langchain_huggingface.chat_models import ChatHuggingFace
+# === LangChain Cache ===
+set_llm_cache(InMemoryCache())
 
+# === Retriever ===
+retriever = get_or_build_retriever()
 
-set_llm_cache(InMemoryCache()) # to  avoid recomputing embeddings & reranking for repeated queries.
+# === LLM Setup ===
+OLLAMA_BASE = os.getenv("OLLAMA_BASE_URL", "http://ollama:11434")
 
-# =========================
-# 1) Embeddings & Vector DB : We get the DB
-# =========================
-# embedding_function = HuggingFaceEmbeddings(
-#     model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
-# )
-
-# vectorstore = Chroma(
-#     persist_directory="./chroma_db",
-#     collection_name="electric_tools_sample",
-#     embedding_function=embedding_function
-# )
-# retriever = vectorstore.as_retriever() 
-
-# --- Config via env (works in Docker compose & locally)
-CHROMA_HOST = os.environ.get("CHROMA_HOST", "chroma")
-CHROMA_PORT = int(os.environ.get("CHROMA_PORT", "8000"))
-
-
-embedding_function = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
-)
-
-# Cliente HTTP al servidor Chroma
-chroma_client = chromadb.HttpClient(host=CHROMA_HOST, port=CHROMA_PORT)
-
-# Vectorstore apuntando a la colección del servidor
-vectorstore = Chroma(
-    client=chroma_client,
-    collection_name="electric_tools_sample",
-    embedding_function=embedding_function,
-)
-
-# # Retriever (MMR recomendado)
-# retriever = vectorstore.as_retriever(
-#     search_type="mmr",
-#     search_kwargs={"k": 1, "fetch_k": 12, "lambda_mult": 0.6}, #
-# ) #ok
-#intentar 
-retriever = vectorstore.as_retriever(
-    search_type="similarity",
-    search_kwargs={"k": 1}  # On augmente le nombre de documents
-)
-
-# =========================
-# 2) LLMs via Ollama (primary + fallback)
-# =========================
-# When running this code inside Docker, set base_url="http://host.docker.internal:11434"
-OLLAMA_BASE = os.environ.get("OLLAMA_BASE_URL", "http://ollama:11434")
-
-# chat = ChatOllama(
-#     model= "qwen2.5:1.5b", #"qwen2.5:0.5b", ,  #qwen2.5:3b          model="qwen2.5:1.5b"     # good Spanish + quality
-#     base_url=OLLAMA_BASE,
-#     temperature=0.3,                  # deterministic & faster for RAG
-#     num_ctx=2048,  # c
-#     num_predict=300,  #c                # cap output length to reduce latency
-#     keep_alive="30m",
-#     request_timeout=120,
-# )
-
+# Primary model: HF via API
 llm = HuggingFaceEndpoint(
     repo_id="meta-llama/Meta-Llama-3-8B-Instruct",
     task="conversational",
     temperature=0.7,
     max_new_tokens=512,
 )
-
 chat = ChatHuggingFace(llm=llm)
 
+# Fallback model: Ollama
 chat_fallback = ChatOllama(
-    model="qwen2.5:0.5b",             # faster fallback
+    model="qwen2.5:0.5b",
     base_url=OLLAMA_BASE,
     temperature=0.3,
-    num_ctx=2048, 
+    num_ctx=2048,
     num_predict=300,
     keep_alive="30m",
     request_timeout=120,
 )
 
-# =========================
-# 3) Prompt & Chains
-# =========================
+# === Prompt & RAG Chain ===
 prompt = ChatPromptTemplate.from_messages([
     ("system", "Eres un asistente experto en herramientas eléctricas de ferretería. "
-               "Responde SÓLO usando la información del contexto don un tono de servicio al cliente. "
+               "Responde SÓLO usando la información del contexto con un tono de service client. "
                "Si el contexto no tiene suficiente información, responde EXACTAMENTE: "
-               "'No tengo suficiente información'. "
-               "Responde SIEMPRE en español neutro."),
+               "'No tengo suficiente información'. Responde SIEMPRE en español neutro."),
     ("user", "Contexto:\n{context}\n\nPregunta: {question}")
 ])
+
 primary_chain = prompt | chat | StrOutputParser()
 fallback_chain = prompt | chat_fallback | StrOutputParser()
 main_chain = primary_chain.with_fallbacks([fallback_chain])
 
-# --- format retrieved docs into plain text
 def format_docs(docs):
     return "\n\n".join(f"- {d.page_content[:400]}" for d in docs)
 
@@ -138,11 +73,8 @@ rag_chain = (
     | main_chain
 )
 
-# =========================
-# 4) Chat history
-# =========================
+# === Chat History for RunnableWithMessageHistory (optional) ===
 chat_histories = {}
-
 def get_chat_history(session_id: str = "default") -> BaseChatMessageHistory:
     if session_id not in chat_histories:
         chat_histories[session_id] = InMemoryChatMessageHistory()
@@ -155,9 +87,17 @@ rag_with_memory = RunnableWithMessageHistory(
     history_messages_key="history"
 )
 
-# =========================
-# 5) Logging + Answer function
-# =========================
+# === Chat Memory for ConversationalRetrievalChain ===
+sessions_memory = {}
+def get_memory(session_id):
+    if session_id not in sessions_memory:
+        sessions_memory[session_id] = ConversationBufferMemory(
+            memory_key="chat_history",
+            return_messages=True
+        )
+    return sessions_memory[session_id]
+
+# === Logging ===
 def log_conversation(session_id, question, answer):
     os.makedirs("logs", exist_ok=True)
     log_entry = {
@@ -169,54 +109,15 @@ def log_conversation(session_id, question, answer):
     with open("logs/conversations.jsonl", "a") as f:
         f.write(json.dumps(log_entry, ensure_ascii=False) + "\n")
 
-# def answer(query, session_id="default"):
-#     response = rag_with_memory.invoke(
-#         {"question": query},
-#         config={"configurable": {"session_id": session_id}}
-#     )
-#     log_conversation(session_id, query, response)
-#     return response
-
-#With context
-sessions_memory = {}
-
-def get_memory(session_id):
-    if session_id not in sessions_memory:
-        sessions_memory[session_id] = ConversationBufferMemory(
-            memory_key="chat_history",
-            return_messages=True
-        )
-    return sessions_memory[session_id]
-
+# === Final Answer Function ===
 def answer(query, session_id="default"):
     memory = get_memory(session_id)
-
     rag = ConversationalRetrievalChain.from_llm(
         llm=chat,
         retriever=retriever,
         memory=memory,
         return_source_documents=False,
     )
-
     response = rag.invoke({"question": query})
     log_conversation(session_id, query, response["answer"])
     return response["answer"]
-
-# # =========================
-# # 6) Terminal UI
-# # =========================
-# if __name__ == "__main__":
-#     print("🛠️ Asistente de Ferretería : Pregúntame sobre  productos de Ferritienda.")
-#     session_id = "default"
-#     while True:
-#         user_input = input("🔍 Tu pregunta (o 'salir' para terminar): ")
-#         if user_input.lower() in ["salir", "exit"]:
-#             print("👋 ¡Hasta luego!")
-#             break
-#         respuesta = answer(user_input, session_id=session_id)
-#         print("💬 Respuesta:", respuesta)
-
-#         history = get_chat_history(session_id).messages
-#         print("\n🧾 Historial:")
-#         for msg in history:
-#             print(f"{msg.type.upper()}: {msg.content}")
