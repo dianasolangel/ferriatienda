@@ -2,8 +2,6 @@ import os
 import json
 from datetime import datetime
 from operator import itemgetter
-
-import pandas as pd
 from langchain_core.chat_history import BaseChatMessageHistory, InMemoryChatMessageHistory
 from langchain_chroma import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings, HuggingFaceEndpoint
@@ -17,6 +15,7 @@ from langchain.chains import ConversationalRetrievalChain
 from langchain.memory import ConversationBufferMemory
 from langchain_core.caches import InMemoryCache
 from langchain.globals import set_llm_cache
+
 # to start chroma client
 from ferriatienda.startup import get_or_build_retriever
 
@@ -109,7 +108,7 @@ def log_conversation(session_id, question, answer):
     with open("logs/conversations.jsonl", "a") as f:
         f.write(json.dumps(log_entry, ensure_ascii=False) + "\n")
 
-# === Final Answer Function ===
+# === Answer Function ===
 def answer(query, session_id="default"):
     memory = get_memory(session_id)
     rag = ConversationalRetrievalChain.from_llm(

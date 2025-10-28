@@ -16,9 +16,9 @@ def get_or_build_retriever():
     #we look if it already exists
     try:
         collection = client.get_collection(COLLECTION_NAME)
-        print(f"✅ Chroma collection '{COLLECTION_NAME}' already exists with {collection.count()} vectors.")
+        print(f" Chroma collection '{COLLECTION_NAME}' already exists with {collection.count()} vectors.")
     except Exception:
-        print(f"⚙️ Collection '{COLLECTION_NAME}' not found. Creating...")
+        print(f" Collection '{COLLECTION_NAME}' not found. Creating...")
         build_chroma_vectorstore()
         collection = client.get_collection(COLLECTION_NAME)
         
