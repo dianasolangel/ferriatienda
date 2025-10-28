@@ -6,3 +6,12 @@ __pycache__/
 venv/
 .env
 data/*.json
+logs/
+# Ignore model files
+models/
+*.bin
+*.safetensors
+*.pt
+.DS_Store
+chroma_db/
+data/attachments/

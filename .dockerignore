@@ -1,0 +1,83 @@
+# ==========================
+# 1. Git, Python & IDE noise
+# ==========================
+.git
+.gitignore
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info
+*.log
+*.tmp
+*.bak
+*.swp
+.idea/
+.vscode/
+*.ipynb_checkpoints
+
+# ==========================
+# 2. Local data & DBs
+# ==========================
+logs/
+*.db
+*.sqlite*
+*.jsonl
+*.json.gz
+# .env*
+.envrc
+
+# ==========================
+# 3. BIG files & ML models
+# ==========================
+models/
+**/*.safetensors
+**/*.bin
+**/*.pt
+**/*.ckpt
+**/*.onnx
+**/*.npy
+**/*.npz
+**/*.parquet
+**/*.h5
+**/*.gz
+**/*.zip
+**/*.tar*
+**/*.bz2
+
+# Hugging Face caches & models
+.huggingface/
+huggingface/
+.cache/
+**/.cache/
+
+# Datasets & embeddings (allow only useful file)
+datasets/
+data/
+!data/scrapping/sample_electric_truper_products.csv  # <-- autorisé
+embeddings/
+index/
+vectorstore/
+chroma_db/
+
+# ==========================
+# 4. Docker, build, node, misc
+# ==========================
+node_modules/
+build/
+dist/
+tmp/
+coverage/
+.DS_Store
+.venv/
+**/.venv/
+
+# ==========================
+# 5. Notebooks, tests, reports
+# ==========================
+*.ipynb
+notebooks/
+experiments/
+reports/
+tests/__pycache__/
+tests/outputs/
